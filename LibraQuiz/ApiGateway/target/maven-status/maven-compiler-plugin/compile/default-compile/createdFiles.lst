@@ -1,0 +1,4 @@
+com\lq\gateway\config\CorsConfig.class
+com\lq\gateway\util\JwtUtil.class
+com\lq\gateway\ApiGatewayApplication.class
+com\lq\gateway\filter\JwtAuthGlobalFilter.class
