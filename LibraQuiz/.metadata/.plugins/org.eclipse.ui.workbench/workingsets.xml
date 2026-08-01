@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workingSetManager>
+<workingSet editPageId="org.eclipse.jdt.internal.ui.DynamicSourcesWorkingSet" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1785483318837_0" label="Java Main Sources" name="Java Main Sources"/>
+<workingSet editPageId="org.eclipse.jdt.internal.ui.DynamicSourcesWorkingSet" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1785483318861_1" label="Java Test Sources" name="Java Test Sources"/>
+<workingSet editPageId="org.eclipse.ui.resourceWorkingSetPage" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1785483449058_3" label="libraquiz-parent" name="libraquiz-parent">
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/AIService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/ApiGateway" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/BookService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/CategoryService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/CourseService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/EurekaServer" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/ExaminationService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/IdentityService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/LibraryTransactionService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/NotificationService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/QuestionBankService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/QuestionManagementService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/QuizService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/ResultService" type="4"/>
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/UserService" type="4"/>
+</workingSet>
+<workingSet aggregate="true" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1785483324989_2" label="Window Working Set" name="Aggregate for window 1785483324989"/>
+</workingSetManager>
