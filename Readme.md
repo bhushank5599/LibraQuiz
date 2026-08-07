@@ -90,6 +90,87 @@ LibraQuiz follows a **Database-per-Service** microservice pattern powered by **S
 * **Category Registry**: Manage global taxonomy for library books and LMS courses.
 * **System Monitor**: Central overview of platform metrics, active exams, and transactions.
 
+
+### 🎯 System Use Case Diagram
+
+The diagram below illustrates the interactions between the 4 primary actors (**Student**, **Teacher**, **Librarian**, and **Admin**) and the core functional modules of the LibraQuiz platform.
+
+```mermaid
+flowchart TD
+    subgraph Actors ["👥 System Actors"]
+        Student["🎓 Student"]
+        Teacher["👨‍🏫 Teacher / Instructor"]
+        Librarian["📚 Librarian"]
+        Admin["🛡️ System Admin"]
+    end
+
+    subgraph AuthBoundary ["🔐 Authentication & Security"]
+        UC_Auth["Login / Auth & JWT Token Issuance"]
+        UC_Profile["Manage User Profile & Credentials"]
+    end
+
+    subgraph LMSBoundary ["📖 LMS & Course Management"]
+        UC_CourseView["Browse Courses & Stream Video Lessons"]
+        UC_CourseManage["Create Courses, Modules & Lessons"]
+        UC_Enroll["Enroll in Courses & Track Completion"]
+    end
+
+    subgraph ExamBoundary ["📝 Examination & AI Engine"]
+        UC_TakeExam["Take Timed Online Exam (Auto-Save Timer)"]
+        UC_AuthorQ["Author Questions in Question Bank"]
+        UC_AI_QGen["Generate AI Quiz Questions from Lessons"]
+        UC_BuildQuiz["Configure Quizzes & Passing Score Rules"]
+        UC_ViewResult["View Instant Exam Evaluation & Analytics"]
+        UC_Recs["Receive AI Recommendations for Weak Areas"]
+    end
+
+    subgraph LibraryBoundary ["📚 Digital Library & Circulation"]
+        UC_SearchBook["Search Book Catalog by ISBN / Author"]
+        UC_RequestBook["Request Book Loans & View Active Fines"]
+        UC_CatalogBook["Catalog Books, Authors & Stock Copies"]
+        UC_Circulation["Process Book Issues, Returns & Fine Ledgers"]
+    end
+
+    subgraph AdminBoundary ["⚙️ Platform Administration"]
+        UC_ManageUsers["Manage Accounts & Assign Role Scopes"]
+        UC_Taxonomy["Manage Global Subject Taxonomies"]
+        UC_SystemMetrics["Monitor Eureka Discovery & System Health"]
+    end
+
+    %% Student Interactions
+    Student --> UC_Auth
+    Student --> UC_Profile
+    Student --> UC_CourseView
+    Student --> UC_Enroll
+    Student --> UC_TakeExam
+    Student --> UC_ViewResult
+    Student --> UC_SearchBook
+    Student --> UC_RequestBook
+    Student --> UC_Recs
+
+    %% Teacher Interactions
+    Teacher --> UC_Auth
+    Teacher --> UC_Profile
+    Teacher --> UC_CourseManage
+    Teacher --> UC_AuthorQ
+    Teacher --> UC_AI_QGen
+    Teacher --> UC_BuildQuiz
+    Teacher --> UC_ViewResult
+
+    %% Librarian Interactions
+    Librarian --> UC_Auth
+    Librarian --> UC_Profile
+    Librarian --> UC_CatalogBook
+    Librarian --> UC_Circulation
+    Librarian --> UC_SearchBook
+
+    %% Admin Interactions
+    Admin --> UC_Auth
+    Admin --> UC_ManageUsers
+    Admin --> UC_Taxonomy
+    Admin --> UC_SystemMetrics
+```
+
 ---
 
 ## ⚙️ Microservices Inventory & Database Mapping
@@ -111,6 +192,233 @@ LibraQuiz follows a **Database-per-Service** microservice pattern powered by **S
 | **AIService** | `8092` | `lq_aidb` | `/api/ai/**` | AI-assisted quiz question generation & recommendations |
 | **NotificationService** | `8093` | `lq_notificationdb` | `/api/notifications/**` | System alerts, email notifications, return reminders |
 | **ExaminationService** | `8094` | `lq_examinationdb` | `/api/exams/**` | Real-time examination session runner & submission |
+
+
+---
+
+## 📊 Database Schemas & Entity-Relationship (ER) Diagram
+
+LibraQuiz implements a **Database-per-Service** pattern, decoupling domain persistence across 13 dedicated MySQL schemas (`lq_identitydb`, `lq_userdb`, `lq_bookdb`, `lq_coursedb`, `lq_quizdb`, etc.). Inter-service foreign keys are managed logically via domain identifiers (`userId`, `bookId`, `courseId`, `quizId`) passed through JWT claims and REST API calls.
+
+### 🌐 High-Level Entity-Relationship (ER) Diagram
+
+```mermaid
+erDiagram
+    %% Identity & Security Domain (lq_identitydb)
+    USER {
+        bigint id PK
+        string username UK
+        string email UK
+        string password
+        boolean enabled
+    }
+    ROLE {
+        bigint id PK
+        string name UK
+    }
+    PERMISSION {
+        bigint id PK
+        string name UK
+    }
+    REFRESH_TOKEN {
+        bigint id PK
+        string token UK
+        datetime expiry_date
+    }
+
+    USER ||--o{ REFRESH_TOKEN : "owns"
+    USER }|--|{ ROLE : "assigned"
+    ROLE }|--|{ PERMISSION : "grants"
+
+    %% User Profile Domain (lq_userdb)
+    USER_PROFILE {
+        bigint id PK
+        bigint user_id UK
+        string first_name
+        string last_name
+        string phone
+    }
+    STUDENT_PROFILE {
+        bigint id PK
+        string enrollment_number UK
+        string department
+    }
+    TEACHER_PROFILE {
+        bigint id PK
+        string employee_id UK
+        string department
+    }
+    LIBRARIAN_PROFILE {
+        bigint id PK
+        string staff_id UK
+        string shift
+    }
+
+    USER ||--|| USER_PROFILE : "has profile"
+    USER_PROFILE ||--o| STUDENT_PROFILE : "extends"
+    USER_PROFILE ||--o| TEACHER_PROFILE : "extends"
+    USER_PROFILE ||--o| LIBRARIAN_PROFILE : "extends"
+
+    %% Library Domain (lq_bookdb & lq_librarytxndb)
+    CATEGORY {
+        bigint id PK
+        string name
+        bigint parent_id FK
+    }
+    AUTHOR {
+        bigint id PK
+        string name
+    }
+    PUBLISHER {
+        bigint id PK
+        string name
+    }
+    BOOK {
+        bigint id PK
+        string isbn UK
+        string title
+        bigint author_id FK
+        bigint publisher_id FK
+        bigint category_id FK
+        int total_copies
+        int available_copies
+    }
+    BOOK_COPY {
+        bigint id PK
+        bigint book_id FK
+        string barcode UK
+        string status
+    }
+    BORROW_TRANSACTION {
+        bigint id PK
+        bigint user_id FK
+        bigint book_id FK
+        bigint book_copy_id FK
+        date issue_date
+        date due_date
+        date return_date
+        string status
+    }
+    FINE_RECORD {
+        bigint id PK
+        bigint transaction_id FK
+        bigint user_id FK
+        decimal fine_amount
+        boolean paid
+    }
+
+    CATEGORY ||--o{ BOOK : "classifies"
+    AUTHOR ||--o{ BOOK : "wrote"
+    PUBLISHER ||--o{ BOOK : "published"
+    BOOK ||--o{ BOOK_COPY : "inventory of"
+    BOOK_COPY ||--o{ BORROW_TRANSACTION : "borrowed in"
+    USER ||--o{ BORROW_TRANSACTION : "borrows"
+    BORROW_TRANSACTION ||--o| FINE_RECORD : "incurs"
+
+    %% LMS Domain (lq_coursedb)
+    COURSE {
+        bigint id PK
+        string title
+        bigint instructor_id FK
+        bigint category_id FK
+    }
+    MODULE {
+        bigint id PK
+        bigint course_id FK
+        string title
+        int order_index
+    }
+    LESSON {
+        bigint id PK
+        bigint module_id FK
+        string title
+        string video_url
+    }
+    ENROLLMENT {
+        bigint id PK
+        bigint student_id FK
+        bigint course_id FK
+        datetime enrolled_at
+    }
+
+    CATEGORY ||--o{ COURSE : "categorizes"
+    USER ||--o{ COURSE : "instructs"
+    COURSE ||--o{ MODULE : "contains"
+    MODULE ||--o{ LESSON : "has"
+    USER ||--o{ ENROLLMENT : "enrolls in"
+    COURSE ||--o{ ENROLLMENT : "has enrolled"
+
+    %% Quiz & Exam Engine Domain (lq_questionbankdb, lq_quizdb, lq_examinationdb, lq_resultdb)
+    QUESTION {
+        bigint id PK
+        string question_text
+        string question_type
+        string difficulty
+        bigint category_id FK
+    }
+    QUESTION_OPTION {
+        bigint id PK
+        bigint question_id FK
+        string option_text
+        boolean is_correct
+    }
+    QUIZ {
+        bigint id PK
+        string title
+        bigint course_id FK
+        int duration_minutes
+        int passing_score
+    }
+    QUIZ_QUESTION {
+        bigint id PK
+        bigint quiz_id FK
+        bigint question_id FK
+        int marks
+    }
+    EXAM_ATTEMPT {
+        bigint id PK
+        bigint user_id FK
+        bigint quiz_id FK
+        datetime start_time
+        datetime end_time
+        string status
+    }
+    RESULT {
+        bigint id PK
+        bigint attempt_id FK
+        bigint user_id FK
+        int score_obtained
+        boolean passed
+    }
+
+    CATEGORY ||--o{ QUESTION : "tags"
+    QUESTION ||--o{ QUESTION_OPTION : "has"
+    COURSE ||--o{ QUIZ : "assesses"
+    QUIZ ||--o{ QUIZ_QUESTION : "includes"
+    QUESTION ||--o{ QUIZ_QUESTION : "mapped"
+    USER ||--o{ EXAM_ATTEMPT : "takes"
+    QUIZ ||--o{ EXAM_ATTEMPT : "conducts"
+    EXAM_ATTEMPT ||--|| RESULT : "evaluates into"
+
+    %% AI & Notification Domain (lq_aidb & lq_notificationdb)
+    AI_RECOMMENDATION {
+        bigint id PK
+        bigint user_id FK
+        string recommended_type
+        bigint reference_id
+        string reason
+    }
+    NOTIFICATION {
+        bigint id PK
+        bigint user_id FK
+        string title
+        string message
+        boolean is_read
+    }
+
+    USER ||--o{ AI_RECOMMENDATION : "receives"
+    USER ||--o{ NOTIFICATION : "notified by"
+```
 
 ---
 
@@ -245,3 +553,6 @@ LibraQuiz1/
 ```
 
 ---
+
+
+This project is open-source and available under the **MIT License**.
