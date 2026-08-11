@@ -14,4 +14,5 @@ public interface AuthService {
     void logout(String username);
     List<AuthResponse> getAllUsers();
     AuthResponse updateUserStatus(Long userId, boolean enabled);
+    void deleteUser(Long userId);
 }

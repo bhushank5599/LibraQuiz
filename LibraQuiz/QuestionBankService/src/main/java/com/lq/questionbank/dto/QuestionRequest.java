@@ -224,6 +224,8 @@ public class QuestionRequest {
 
     public static class OptionDto {
         private String optionText;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("isCorrect")
         private boolean isCorrect;
 
         public OptionDto() {
@@ -247,7 +249,11 @@ public class QuestionRequest {
         }
 
         public void setCorrect(boolean correct) {
-            isCorrect = correct;
+            this.isCorrect = correct;
+        }
+
+        public void setIsCorrect(boolean isCorrect) {
+            this.isCorrect = isCorrect;
         }
     }
 }

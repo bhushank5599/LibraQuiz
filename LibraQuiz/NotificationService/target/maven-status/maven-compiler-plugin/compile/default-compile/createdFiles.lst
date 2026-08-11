@@ -1,0 +1,15 @@
+com\lq\notification\entity\Notification.class
+com\lq\notification\controller\NotificationController.class
+com\lq\notification\entity\Notification$NotificationBuilder.class
+com\lq\notification\entity\NotificationTemplate.class
+com\lq\notification\NotificationServiceApplication.class
+com\lq\notification\dto\NotificationResponse$NotificationResponseBuilder.class
+com\lq\notification\dto\NotificationResponse.class
+com\lq\notification\entity\Notification$NotificationType.class
+com\lq\notification\entity\NotificationTemplate$NotificationTemplateBuilder.class
+com\lq\notification\service\impl\NotificationServiceImpl.class
+com\lq\notification\dto\SendNotificationRequest$SendNotificationRequestBuilder.class
+com\lq\notification\dto\SendNotificationRequest.class
+com\lq\notification\entity\Notification$NotificationStatus.class
+com\lq\notification\repository\NotificationRepository.class
+com\lq\notification\service\NotificationService.class
