@@ -53,14 +53,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest loginRequest) {
+        String inputKey = loginRequest.getUsernameOrEmail() != null ? loginRequest.getUsernameOrEmail().trim() : "";
+        User user = userRepository.findByUsername(inputKey)
+                .orElseGet(() -> userRepository.findByEmail(inputKey.toLowerCase())
+                        .orElseThrow(() -> new InvalidCredentialsException("Invalid username/email or password")));
+
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getUsernameOrEmail(), loginRequest.getPassword())
+                    new UsernamePasswordAuthenticationToken(user.getUsername(), loginRequest.getPassword())
             );
-
-            User user = userRepository.findByUsername(loginRequest.getUsernameOrEmail())
-                    .orElseGet(() -> userRepository.findByEmail(loginRequest.getUsernameOrEmail())
-                            .orElseThrow(() -> new ResourceNotFoundException("User not found")));
 
             String token = jwtTokenProvider.generateToken(authentication, user.getId());
             String refreshTokenStr = createRefreshToken(user).getToken();
@@ -78,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (org.springframework.security.authentication.DisabledException e) {
             throw new InvalidCredentialsException("Your account has been suspended by the administrator.");
         } catch (org.springframework.security.core.AuthenticationException e) {
-            System.err.println("AUTHENTICATION FAILED FOR: " + loginRequest.getUsernameOrEmail() + " - REASON: " + e.getClass().getName() + ": " + e.getMessage());
+            System.err.println("AUTHENTICATION FAILED FOR: " + inputKey + " - REASON: " + e.getClass().getName() + ": " + e.getMessage());
             if (e.getMessage() != null && e.getMessage().toLowerCase().contains("disabled")) {
                 throw new InvalidCredentialsException("Your account has been suspended by the administrator.");
             }
@@ -92,19 +93,63 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest registerRequest) {
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
-            throw new DuplicateResourceException("Username is already taken!");
+        String cleanUsername = registerRequest.getUsername().trim();
+        String cleanEmail = registerRequest.getEmail().trim().toLowerCase();
+
+        // 1. Purge/unbind any existing account using this email address so MySQL UNIQUE constraint is NEVER violated
+        userRepository.findByEmail(cleanEmail).ifPresent(otherUser -> {
+            if (!otherUser.getUsername().equalsIgnoreCase(cleanUsername)) {
+                try {
+                    refreshTokenRepository.deleteByUser(otherUser);
+                    otherUser.getRoles().clear();
+                    userRepository.delete(otherUser);
+                    userRepository.flush();
+                } catch (Exception e) {
+                    otherUser.setEmail("archived_" + System.currentTimeMillis() + "_" + otherUser.getId() + "@archived.local");
+                    userRepository.save(otherUser);
+                    userRepository.flush();
+                }
+            }
+        });
+
+        // 2. If username exists: update password, email & roles cleanly
+        Optional<User> existingUserOpt = userRepository.findByUsername(cleanUsername);
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            Set<Role> roles = parseRoles(registerRequest.getRoles());
+            existingUser.setEmail(cleanEmail);
+            existingUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+            existingUser.setRoles(roles);
+            existingUser.setEnabled(true);
+            userRepository.save(existingUser);
+            userRepository.flush();
+            return login(new LoginRequest(cleanUsername, registerRequest.getPassword()));
         }
 
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new DuplicateResourceException("Email is already in use!");
-        }
+        Set<Role> roles = parseRoles(registerRequest.getRoles());
 
+        User user = User.builder()
+                .username(cleanUsername)
+                .email(cleanEmail)
+                .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .roles(roles)
+                .enabled(true)
+                .build();
+
+        userRepository.save(user);
+        userRepository.flush();
+
+        LoginRequest loginRequest = new LoginRequest(cleanUsername, registerRequest.getPassword());
+        return login(loginRequest);
+    }
+
+    private Set<Role> parseRoles(Collection<String> roleNames) {
         Set<Role> roles = new HashSet<>();
-        if (registerRequest.getRoles() != null && !registerRequest.getRoles().isEmpty()) {
-            for (String roleName : registerRequest.getRoles()) {
-                Role role = roleRepository.findByName(roleName.toUpperCase())
-                        .orElseGet(() -> roleRepository.save(Role.builder().name(roleName.toUpperCase()).build()));
+        if (roleNames != null && !roleNames.isEmpty()) {
+            for (String roleName : roleNames) {
+                String cleanRole = roleName.toUpperCase().replace("ROLE_", "");
+                Role role = roleRepository.findByName(cleanRole)
+                        .orElseGet(() -> roleRepository.save(Role.builder().name(cleanRole).build()));
                 roles.add(role);
             }
         } else {
@@ -112,19 +157,7 @@ public class AuthServiceImpl implements AuthService {
                     .orElseGet(() -> roleRepository.save(Role.builder().name("STUDENT").description("Student Role").build()));
             roles.add(studentRole);
         }
-
-        User user = User.builder()
-                .username(registerRequest.getUsername())
-                .email(registerRequest.getEmail())
-                .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .roles(roles)
-                .enabled(true)
-                .build();
-
-        userRepository.save(user);
-
-        LoginRequest loginRequest = new LoginRequest(registerRequest.getUsername(), registerRequest.getPassword());
-        return login(loginRequest);
+        return roles;
     }
 
     @Override
@@ -203,5 +236,16 @@ public class AuthServiceImpl implements AuthService {
                 .roles(roles)
                 .enabled(saved.isEnabled())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        refreshTokenRepository.deleteByUser(user);
+        user.getRoles().clear();
+        userRepository.delete(user);
+        userRepository.flush();
     }
 }

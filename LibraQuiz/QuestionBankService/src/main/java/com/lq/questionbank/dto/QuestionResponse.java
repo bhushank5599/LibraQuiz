@@ -252,6 +252,8 @@ public class QuestionResponse {
     public static class OptionResponse {
         private Long id;
         private String optionText;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("isCorrect")
         private boolean isCorrect;
 
         public OptionResponse() {
@@ -279,12 +281,17 @@ public class QuestionResponse {
             this.optionText = optionText;
         }
 
+        @com.fasterxml.jackson.annotation.JsonProperty("isCorrect")
         public boolean isCorrect() {
             return isCorrect;
         }
 
         public void setCorrect(boolean correct) {
-            isCorrect = correct;
+            this.isCorrect = correct;
+        }
+
+        public void setIsCorrect(boolean isCorrect) {
+            this.isCorrect = isCorrect;
         }
 
         public static OptionResponseBuilder builder() {
